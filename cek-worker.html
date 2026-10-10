@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Cek Worker & Bank</title>
+<script src="wb-config.js"></script>
+<script src="wb-member-bank.js"></script>
+<style>
+body{font-family:system-ui,sans-serif;background:#0b1020;color:#e8eefc;margin:0;padding:16px;max-width:560px}
+h2{margin:0 0 6px;font-size:18px}.s{font-size:12px;color:#9fb0d8;margin:0 0 12px;line-height:1.5}
+button{background:#2563eb;color:#fff;border:0;border-radius:10px;padding:12px 18px;font-size:15px;font-weight:700;width:100%}
+button:disabled{opacity:.5}
+.r{margin-top:10px;padding:10px 12px;border-radius:10px;font-size:13px;line-height:1.5;border:1px solid #243056;background:#111936;word-break:break-word}
+.ok{border-color:#16a34a}.bad{border-color:#dc2626;background:#2a1216}.m{color:#9fb0d8;font-size:12px}b{color:#fff}
+</style>
+</head>
+<body>
+<h2>Cek Worker & Bank</h2>
+<p class="s">Tes koneksi ke Worker memakai pengaturan di <b>wb-config.js</b> situs ini, sekaligus menunjukkan siapa yang sedang login untuk bank. Hanya menulis satu kunci tes bernama <b>cek-koneksi</b>.</p>
+<button id="go">Mulai tes</button>
+<div id="out"></div>
+<script>
+const out = document.getElementById('out');
+function add(cls, html){ const d = document.createElement('div'); d.className = 'r ' + cls; d.innerHTML = html; out.appendChild(d); }
+function esc(x){ return String(x).replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])); }
+function hint(status){
+  if(status === 401 || status === 403) return 'Ditolak server. Kemungkinan <b>nama akun ini belum diizinkan di Worker</b>. Kirim kode worker.js supaya saya cek.';
+  if(status === 404) return 'Tidak ditemukan. Cek alamat Worker dan nama akun di wb-config.js.';
+  if(status === 413) return 'Data terlalu besar.';
+  if(status === 429) return 'Terlalu banyak permintaan, coba lagi sebentar.';
+  if(status >= 500) return 'Server Worker bermasalah. Coba lagi nanti.';
+  return 'Periksa pesan di atas.';
+}
+document.getElementById('go').onclick = async function(){
+  const btn = this; btn.disabled = true; out.innerHTML = '';
+  const c = window.WB_STORE;
+  if(!c || !c.worker || !c.account){ add('bad', '❌ <b>wb-config.js</b> tidak terbaca. Pastikan file ada di folder yang sama.'); btn.disabled = false; return; }
+  const id = (window.WB_BANK && WB_BANK.currentId) ? WB_BANK.currentId() : '(modul bank tidak termuat)';
+  add('', 'Situs: <b>' + esc(location.host + location.pathname.replace(/[^/]*$/, '')) + '</b><br>Akun Worker: <b>' + esc(c.account) + '</b><br>ID bank saat ini: <b>' + esc(id) + '</b>' +
+         (id === 'guest' ? '<br><span class="m">Belum login. Login di halaman utama dulu, lalu buka halaman ini lagi.</span>' : '') +
+         (window.WB_BANK && WB_BANK.limit ? '<br>Batas rumus per scan: <b>' + (WB_BANK.limit() || 'tanpa batas') + '</b>' : ''));
+  const url = c.worker.replace(/\/+$/, '') + '/' + c.account + '/cek-koneksi';
+  const stamp = new Date().toISOString();
+  try{
+    const g = await fetch(url);
+    const gok = g.ok || g.status === 404;
+    add(gok ? 'ok' : 'bad', (gok ? '✅' : '❌') + ' <b>Baca</b> · HTTP ' + g.status + (gok ? '' : '<br>' + hint(g.status)));
+    const p = await fetch(url, { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ t: stamp, dari: location.host }) });
+    add(p.ok ? 'ok' : 'bad', (p.ok ? '✅' : '❌') + ' <b>Tulis</b> · HTTP ' + p.status + (p.ok ? '' : '<br>' + hint(p.status)));
+    if(p.ok){
+      const r = await (await fetch(url)).json();
+      const same = !!(r && r.t === stamp);
+      add(same ? 'ok' : 'bad', (same ? '✅' : '❌') + ' <b>Baca ulang</b> · ' + (same ? 'data kembali sama persis' : 'data tidak sama'));
+    }
+  }catch(e){
+    add('bad', '❌ <b>Tidak bisa terhubung</b><br><span class="m">' + esc(e.message || e) + '</span><br>Kemungkinan alamat situs ini <b>belum diizinkan (CORS) di Worker</b>, atau internet bermasalah. Kirim kode worker.js supaya saya cek.');
+  }
+  btn.disabled = false;
+};
+</script>
+</body>
+</html>
