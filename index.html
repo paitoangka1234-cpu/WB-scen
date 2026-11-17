@@ -941,7 +941,7 @@
         <input type="text" id="adm-bv-search" placeholder="🔍 Cari nama / no HP..." oninput="wbRenderBankView()" style="flex:1;min-width:0">
         <button onclick="wbBVLoadAll()" style="padding:8px 12px;border-radius:8px;border:1px solid rgba(34,211,238,.3);background:rgba(34,211,238,.1);color:#22d3ee;font-size:12px;font-weight:800;cursor:pointer;white-space:nowrap">🔄 Muat semua</button>
       </div>
-      <div style="font-size:11px;color:var(--muted)">Isi bank rumus yang di-save tiap member (Scan 1–5, Prediksi, Harian, Otomatis). Data dimuat saat kamu tap "Muat".</div>
+      <div style="font-size:11px;color:var(--muted)">Isi bank rumus yang di-save tiap member (Scan 1–5, Prediksi, Harian, Otomatis, Shio, Rumus). Data dimuat saat kamu tap "Muat".</div>
     </div>
     <div id="adm-bv-list"><div class="adm-log-empty">⏳ Memuat...</div></div>
   </div>
@@ -2332,6 +2332,7 @@ const WB_FEATURES = [
   { key:'scan3', label:'Scan 3',      file:'scan3.html' },
   { key:'scan4', label:'Scan 4',      file:'scan4.html' },
   { key:'scan5', label:'Scan 5',      file:'scan5.html' },
+  { key:'rumus', label:'Rumus',       file:'rumus.html' },
   { key:'prediksi', label:'Prediksi Auto (tab Prediksi & menu)', file:'prediksi.html' },
   { key:'bank_prediksi', label:'Prediksi › tab Bank (+ Scan 1–5)', file:'prediksi.html' },
   { key:'pred_harian', label:'Prediksi › tab Harian', file:'prediksi.html' },
@@ -2831,6 +2832,7 @@ let _wbAcc = { id:'', mode:'edit', baseExp:'', pkgLabels:[] };
 // key = nama field di record member; dibaca langsung oleh halaman Prediksi / Harian / Otomatis (prediksi.html).
 // Kosong = bawaan. Admin sendiri selalu tanpa batas.
 const WB_LIMIT_GROUPS = [
+  { t:'🔎 SCAN 1–5 — simpan Bank per scan', f:[1,2,3,4,5].map(n=>({ key:'scan'+n+'BankLimit', l:'Save bank Scan '+n+' — maks rumus tersimpan', max:300, ph:'ikut batas umum' })) },
   { t:'🔮 PREDIKSI OTOMATIS', f:[
     { key:'predMktLimit',   l:'Pasaran maks (1-100)',                              max:100,  ph:'bawaan 10' },
     { key:'predStopLimit',  l:'Stop scan — maks rumus hasil scan',                 max:300,  ph:'bawaan = batas bank' },
@@ -2845,7 +2847,11 @@ const WB_LIMIT_GROUPS = [
     { key:'otoMktLimit',    l:'Pasaran maks (1-64)',                               max:64,   ph:'kosong = bawaan' },
     { key:'otoStopLimit',   l:'Stop scan — maks rumus hasil scan',                 max:1000, ph:'bawaan 30' },
     { key:'otoPerMkt',      l:'Stop trek per pasaran — dapat N trek lalu lanjut pasaran berikutnya', max:50, ph:'tanpa batas' },
-    { key:'otoBankLimit',   l:'Save bank — maks rumus tersimpan',                  max:300,  ph:'bawaan 20' } ] }
+    { key:'otoBankLimit',   l:'Save bank — maks rumus tersimpan',                  max:300,  ph:'bawaan 20' } ] },
+  { t:'📆 RUMUS HARIAN (rumus.html)', f:[
+    { key:'rumusBankLimit', l:'Save bank — maks rumus tersimpan',                  max:300,  ph:'bawaan 20' } ] },
+  { t:'🐉 SCAN SHIO & JALUR', f:[
+    { key:'shioBankLimit',  l:'Save bank shio — maks rumus tersimpan',             max:300,  ph:'bawaan 20' } ] }
 ];
 const WB_LIMITS = WB_LIMIT_GROUPS.reduce((a,g)=>a.concat(g.f),[]);
 function wbBuildLimitFields(){
@@ -3237,7 +3243,7 @@ async function wbDoResetPw(memberId, uid){
 // sendiri (bin yang sama dengan data member) — bukan localStorage lagi.
 // Jadi baca/tulisnya langsung lewat WB_ALL_USERS / jGetMembers-jSaveMembers.
 // ══════════════════════════════════════════════════════════
-const WB_APP_LABEL = { scan1:'Scan 1', scan2:'Scan 2', scan3:'Scan 3', scan4:'Scan 4', scan5:'Scan 5', prediksi:'Bank Prediksi', harian:'Bank Harian', otomatis:'Bank Otomatis' };
+const WB_APP_LABEL = { scan1:'Scan 1', scan2:'Scan 2', scan3:'Scan 3', scan4:'Scan 4', scan5:'Scan 5', prediksi:'Bank Prediksi', harian:'Bank Harian', otomatis:'Bank Otomatis', shio:'Bank Shio', rumus:'Bank Rumus' };
 function wbAppLabel(app){
   if(WB_APP_LABEL[app]) return WB_APP_LABEL[app];
   const base = app.split('_')[0];
@@ -3312,15 +3318,18 @@ function wbXTrekText(it){
 }
 /* ══ Tampilan Bank Member (admin): per member → ringkasan 4 bank → Lihat → per bank → per pasaran → kartu rumus ══
    Bank Rumus (Scan) = Scan 1–5 | Bank Prediksi / Harian / Otomatis = tiga bank di prediksi.html (dan scan1.html yang sama isinya). */
+const wbLimOf = (u,k) => { let n = parseInt(u[k],10); if(!(n>0)) n = parseInt(u.bankLimit,10); return n>0 ? n : 20; };   // batas per bank; kosong -> batas umum -> 20
 const WB_BV_DEF = [
-  { bk:'scan1', ico:'🏦', title:'Scan 1', color:'#22d3ee', test:a=>/^scan1(?!\d)/.test(a), lim:u=>(parseInt(u.bankLimit,10)>0?parseInt(u.bankLimit,10):20) },
-  { bk:'scan2', ico:'🏦', title:'Scan 2', color:'#38bdf8', test:a=>/^scan2(?!\d)/.test(a), lim:u=>(parseInt(u.bankLimit,10)>0?parseInt(u.bankLimit,10):20) },
-  { bk:'scan3', ico:'🏦', title:'Scan 3', color:'#818cf8', test:a=>/^scan3(?!\d)/.test(a), lim:u=>(parseInt(u.bankLimit,10)>0?parseInt(u.bankLimit,10):20) },
-  { bk:'scan4', ico:'🏦', title:'Scan 4', color:'#34d399', test:a=>/^scan4(?!\d)/.test(a), lim:u=>(parseInt(u.bankLimit,10)>0?parseInt(u.bankLimit,10):20) },
-  { bk:'scan5', ico:'🏦', title:'Scan 5', color:'#f472b6', test:a=>/^scan5(?!\d)/.test(a), lim:u=>(parseInt(u.bankLimit,10)>0?parseInt(u.bankLimit,10):20) },
+  { bk:'scan1', ico:'🏦', title:'Scan 1', color:'#22d3ee', test:a=>/^scan1(?!\d)/.test(a), lim:u=>wbLimOf(u,'scan1BankLimit') },
+  { bk:'scan2', ico:'🏦', title:'Scan 2', color:'#38bdf8', test:a=>/^scan2(?!\d)/.test(a), lim:u=>wbLimOf(u,'scan2BankLimit') },
+  { bk:'scan3', ico:'🏦', title:'Scan 3', color:'#818cf8', test:a=>/^scan3(?!\d)/.test(a), lim:u=>wbLimOf(u,'scan3BankLimit') },
+  { bk:'scan4', ico:'🏦', title:'Scan 4', color:'#34d399', test:a=>/^scan4(?!\d)/.test(a), lim:u=>wbLimOf(u,'scan4BankLimit') },
+  { bk:'scan5', ico:'🏦', title:'Scan 5', color:'#f472b6', test:a=>/^scan5(?!\d)/.test(a), lim:u=>wbLimOf(u,'scan5BankLimit') },
   { bk:'pred',   ico:'💾', title:'Bank Prediksi',     color:'#c4b5fd', test:a=>/^prediksi/.test(a),    lim:u=>(parseInt(u.predBankLimit,10)>0?parseInt(u.predBankLimit,10):20) },
   { bk:'harian', ico:'📅', title:'Bank Harian',       color:'#fbbf24', test:a=>/^harian/.test(a),      lim:u=>(parseInt(u.harianBankLimit,10)>0?parseInt(u.harianBankLimit,10):20) },
-  { bk:'oto',    ico:'🤖', title:'Bank Otomatis (Rekap / Scan 1)', color:'#6ee7b7', test:a=>/^otomatis/.test(a),    lim:u=>(parseInt(u.otoBankLimit,10)>0?parseInt(u.otoBankLimit,10):20) }
+  { bk:'oto',    ico:'🤖', title:'Bank Otomatis (Rekap / Scan 1)', color:'#6ee7b7', test:a=>/^otomatis/.test(a),    lim:u=>(parseInt(u.otoBankLimit,10)>0?parseInt(u.otoBankLimit,10):20) },
+  { bk:'shio',   ico:'🐉', title:'Bank Shio',         color:'#fb923c', test:a=>/^shio/.test(a),        lim:u=>wbLimOf(u,'shioBankLimit') },
+  { bk:'rumus',  ico:'🧮', title:'Bank Rumus (Harian)', color:'#f59e0b', test:a=>/^rumus/.test(a),     lim:u=>wbLimOf(u,'rumusBankLimit') }
 ];
 let _wbBV = {};          // idMember -> { loading, err, apps:{app:[items]}, updatedAt }
 let _wbBVSec = {};       // 'mid|bk' -> true kalau bagian bank dibuka
@@ -3342,7 +3351,7 @@ async function wbBVLoad(mid){
     await wbXLoad();
     const ids = await WB_BANK.listApps(mid), apps = {};
     const seen = new Set(ids);
-    for(const app of ['scan1','scan2','scan3','scan4','scan5','prediksi','harian','otomatis']) seen.add(app);   // cek semua halaman bank, bukan hanya yang dilaporkan listApps
+    for(const app of ['scan1','scan2','scan3','scan4','scan5','prediksi','harian','otomatis','shio','rumus']) seen.add(app);   // cek semua halaman bank, bukan hanya yang dilaporkan listApps
     for(const app of seen){ let it = []; try{ it = await WB_BANK.get(app, mid); }catch(e){} if(it && it.length) apps[app] = it.map(x=>Object.assign({},x,{_app:app})); }
     // sisa data lama: bank yang dulu disimpan di field member.banks
     const um = WB_ALL_USERS.find(x=>(x.id||x.phone)===mid);
