@@ -1112,6 +1112,12 @@
       </div>
       <span class="tool-name">Scan 5</span><span class="tool-hot">HOT</span>
     </a>
+    <a href="rumus.html" class="tool-item" id="menu-rumus" target="_blank" rel="noopener">
+      <div class="tool-icon" style="background:linear-gradient(135deg,#14b8a6,#0f766e)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2.5" width="14" height="19" rx="2"/><line x1="8.5" y1="7" x2="15.5" y2="7"/><line x1="8.5" y1="12" x2="8.6" y2="12"/><line x1="12" y1="12" x2="12.1" y2="12"/><line x1="15.4" y1="12" x2="15.5" y2="12"/><line x1="8.5" y1="16" x2="8.6" y2="16"/><line x1="12" y1="16" x2="12.1" y2="16"/><line x1="15.4" y1="16" x2="15.5" y2="16"/></svg>
+      </div>
+      <span class="tool-name">Rumus</span><span class="tool-hot">NEW</span>
+    </a>
     <a href="prediksi.html" class="tool-item" id="menu-prediksi" target="_blank" rel="noopener">
       <div class="tool-icon" style="background:linear-gradient(135deg,#a855f7,#00e5ff)">
         <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>
@@ -2758,7 +2764,7 @@ async function wbCheckExpiry(){
 setInterval(wbCheckExpiry, 60*1000);   // kunci dari admin berlaku tanpa member perlu login ulang
 document.addEventListener('visibilitychange', ()=>{ if(document.visibilityState==='visible') wbCheckExpiry(); });
 wbCheckExpiry();
-const WB_MENU_IDS = { data:'menu-dataresult', scan1:'menu-scan1', scan2:'menu-scan2', scan3:'menu-scan3', scan4:'menu-scan4', scan5:'menu-scan5', prediksi:'menu-prediksi', bank_prediksi:'menu-bank', blog:'menu-blog' };
+const WB_MENU_IDS = { data:'menu-dataresult', scan1:'menu-scan1', scan2:'menu-scan2', scan3:'menu-scan3', scan4:'menu-scan4', scan5:'menu-scan5', rumus:'menu-rumus', prediksi:'menu-prediksi', bank_prediksi:'menu-bank', blog:'menu-blog' };
 // Terkunci = kunci global (berlaku ke semua, termasuk yang belum login) ATAU kunci khusus member ini. Admin tidak pernah terkunci.
 const WB_TAB_LOCKS = [['market','tab_market'], ['prediksi','prediksi'], ['pasaran','tab_utama']];   // [nama tab, kunci admin] sesuai urutan tombol
 function wbIsLockedFor(m, key){
